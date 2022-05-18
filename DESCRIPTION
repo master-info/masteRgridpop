@@ -1,0 +1,20 @@
+Package: masteRgridpop
+Type: Package
+Date: 2022-05-20
+Title: Popolazione a livello di griglia microterritoriale (diverse fonti)
+Version: 0.1.0
+Authors@R: person("Luca", "Valnegri", email = "l.valnegri@datamaps.co.uk", role = c("aut", "cre"))
+Description: Popolazione a livello di griglia microterritoriale per migliorare l'analisi spaziale geodemografica per MaSTeR Information, Milano, Italy.
+License: file LICENSE
+Encoding: UTF-8
+Depends: R (>= 4.1)
+Imports:
+  data.table,
+  leaflet,
+  masteRfun,
+  sf
+Remotes:
+  master-info/masteRfun
+Suggests:
+LazyData: true
+RoxygenNote: 7.2.0

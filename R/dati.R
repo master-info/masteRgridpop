@@ -1,6 +1,9 @@
 #' @importFrom data.table data.table
 NULL
 
+#' @import sf
+NULL
+
 #' fb_centroidi
 #'
 #' Centroidi pesati rispetto alla popolazione totale o ad un suo particolare segmento (vedi elenco \code{fb_pop.lst})
@@ -14,3 +17,16 @@ NULL
 #' }
 #'
 'fb_centroidi'
+
+#' yc
+#'
+#' Tabella Comuni ridotta 
+#' 
+'yc'
+
+#' yb
+#'
+#' Confini Comunali ridotti al 10% 
+#' 
+'yb'
+

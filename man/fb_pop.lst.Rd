@@ -3,7 +3,7 @@
 \docType{data}
 \name{fb_pop.lst}
 \alias{fb_pop.lst}
-\title{Lista dei segmenti di popolazione presenti nei microdati Facebook}
+\title{fb_pop.lst}
 \format{
 An object of class \code{character} of length 7.
 }

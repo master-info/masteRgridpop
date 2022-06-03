@@ -23,12 +23,7 @@ assign(fn, y)
 save( list = fn, file = file.path('data', paste0(fn, '.rda')), version = 3, compress = 'gzip' )
 
 fn <- 'yc'
-## >>> CODICE DA CANCELLARE!!! <<<<< ##
-yc <- masteRgeo::comuni[, .SD, .SDcols = patterns('CMN|lat|lon|pop')][order(CMNd)]
-yc[, `:=`( wx_lon = x_lon, wy_lat = y_lat, mx_lon = x_lon, my_lat = y_lat, sx_lon = x_lon, sy_lat = y_lat)]
-assign(fn, yc)
-#######################################
-# assign(fn, masteRgeo::comuni[, .SD, .SDcols = patterns('CMN|lat|lon|pop')][order(CMNd)])
+assign(fn, masteRgeo::comuni[, .SD, .SDcols = patterns('CMN|lat|lon|pop')][order(CMNd)])
 save( list = fn, file = file.path('data', paste0(fn, '.rda')), version = 3, compress = 'gzip' )
 
 fn <- 'yb'

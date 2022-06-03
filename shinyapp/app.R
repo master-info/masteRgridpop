@@ -1,5 +1,4 @@
 # estrare valori UFFICIALI comuni dei corrispondenti segmenti popolazione
-# calcolare Centroidi
 # Titolo Mappa?
 # Stampa Mappa. tmap? ggplot2?
 

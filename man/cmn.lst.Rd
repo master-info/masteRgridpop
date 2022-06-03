@@ -5,7 +5,7 @@
 \alias{cmn.lst}
 \title{cmn.lst}
 \format{
-An object of class \code{integer} of length 7904.
+An object of class \code{character} of length 7904.
 }
 \usage{
 cmn.lst

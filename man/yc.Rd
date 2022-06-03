@@ -5,7 +5,7 @@
 \alias{yc}
 \title{yc}
 \format{
-An object of class \code{data.table} (inherits from \code{data.frame}) with 7904 rows and 19 columns.
+An object of class \code{data.table} (inherits from \code{data.frame}) with 7904 rows and 18 columns.
 }
 \usage{
 yc

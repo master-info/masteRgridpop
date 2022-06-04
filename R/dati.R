@@ -30,3 +30,9 @@ NULL
 #' 
 'yb'
 
+#' mps
+#'
+#' Mappa iniziale
+#' 
+'mps'
+

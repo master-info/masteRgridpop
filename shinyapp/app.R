@@ -2,7 +2,7 @@
 # Titolo Mappa?
 # Stampa Mappa. tmap? ggplot2?
 
-masteRfun::load_pkgs(master = FALSE, 'masteRgridpop', 'masteRshiny', 'data.table', 'leaflet', 'leaflet.extras', 'sf', 'shiny', 'shinyjs', 'shinyWidgets')
+masteRfun::load_pkgs(master = FALSE, 'masteRgridpop', 'masteRshiny', 'data.table', 'leafgl', 'leaflet', 'sf', 'shiny', 'shinyjs', 'shinyWidgets')
 apath <- file.path(data_path, 'gridpop', 'facebook')
 
 ui <- fluidPage(
@@ -14,13 +14,24 @@ ui <- fluidPage(
         tags$style("@import url('https://geo-master.eu/assets/icone/font-awesome/all.css;')"),
         tags$style(HTML("
             #out_map { height: calc(100vh - 80px) !important; }
-            #rdo_tpe { pointer-events: none; font-style: italic; }
             .well { 
                 padding: 10px;
-                height: 90vh; 
+                height: calc(100vh - 80px);
                 overflow-y: auto; 
                 border: 10px;
                 background-color: #EAF0F4; 
+            }
+            ::-webkit-scrollbar {
+                width: 8px;
+            }
+            ::-webkit-scrollbar-track {
+                background: #f1f1f1;
+            }
+            ::-webkit-scrollbar-thumb {
+                background: #888;
+            }
+            ::-webkit-scrollbar-thumb:hover {
+                background: #555;
             }
             .col-sm-3 { padding-right: 0; }
         "))
@@ -32,29 +43,24 @@ ui <- fluidPage(
     fluidRow(
         column(3,
             wellPanel(
-                pickerInput('cbo_tpp', 'POPOLAZIONE:', fb_pop.lst),
                 virtualSelectInput(
                     'cbo_cmn', 'COMUNE:', cmn.lst, character(0), search = TRUE, 
                     placeholder = 'Selezionare un Comune', 
                     searchPlaceholderText = 'Cerca...', 
                     noSearchResultsText = 'Nessun Comune trovato!'
                 ),
+                pickerInput('cbo_tpp', 'POPOLAZIONE:', fb_pop.lst),
                 h5(id = 'txt_num', ''),
-                br(),
-                awesomeRadio('rdo_tpe', 'VISUALIZZA COME:', c('Punti', 'Voronoi')),
-                prettySwitch('swt_lbl', 'Aggiungi Etichette', TRUE, 'success', fill = TRUE),
                 br(),
                 selectInput('cbo_tls', 'TESSERA MAPPA:', tiles.lst, tiles.lst[[2]]),
                 masterPalette('col_pop', 'SCHEMA COLORE:', 'Rossi'),
                 prettySwitch('swt_rvc', 'INVERTI COLORI', FALSE, 'success', fill = TRUE),
-                conditionalPanel("input.rdo_tpe == 'Punti'",
-                    sliderInput('sld_pop', 'SPESSORE PUNTI:', 4, 12, 6, 1)
-                ),
+                sliderInput('sld_pop', 'SPESSORE PUNTI:', 4, 20, 8, 1),
                 masterColore('col_com', 'COLORE LINEA COMUNE:', 'black'), 
                 sliderInput('sld_com', 'SPESSORE BORDO COMUNE:', 2, 20, 6, 1),
             )
         ),
-        column(9, leafletOutput('out_map', width = '100%'))
+        column(9, leafglOutput('out_map', width = '100%'))
     )
     
 )
@@ -62,7 +68,7 @@ ui <- fluidPage(
 server <- function(input, output) {
 
     # INIZIAZIONE MAPPA
-    output$out_map <- renderLeaflet({ mps})
+    output$out_map <- renderLeaflet({ mps })
 
     # DETERMINO DATASETS
     dts <- reactive({
@@ -71,11 +77,11 @@ server <- function(input, output) {
             
             ycx <- yc[CMN == input$cbo_cmn]
             ybx <- yb |> subset(CMN == input$cbo_cmn) |> st_cast('MULTILINESTRING') |> merge(ycx)
-            fbx <- read_fst_idx(file.path(apath, input$cbo_tpp), input$cbo_cmn)
+            fbx <- read_fst_idx(file.path(apath, input$cbo_tpp), input$cbo_cmn) |> st_as_sf(coords = c('x_lon', 'y_lat'), crs = 4326)
             dn <- gsub(' .*', '', names(fb_pop.lst)[which(fb_pop.lst == input$cbo_tpp)])
-            bbx <- as.numeric(sf::st_bbox(ybx))
+            bbx <- as.numeric(st_bbox(ybx))
             
-            html('txt_num', paste('Estratti', formatCit(nrow(fbx)), 'punti'))
+            html('txt_num', paste('Estratte', formatCit(nrow(fbx)), 'griglie'))
             list('ycx' = ycx, 'ybx' = ybx, 'fbx' = fbx, 'dn' = dn, 'bbx' = bbx)
     })
     
@@ -91,7 +97,7 @@ server <- function(input, output) {
             
             y <- leafletProxy('out_map') |>
                     removeShape(layerId = 'spinnerMarker') |>
-                    clearShapes() |> clearControls() |> 
+                    clearShapes() |> clearGlLayers() |> clearControls() |> clearMarkers() |> 
                     fitBounds(dts()$bbx[1], dts()$bbx[2], dts()$bbx[3], dts()$bbx[4]) |> 
                     addPolylines(
                         data = dts()$ybx,
@@ -103,13 +109,13 @@ server <- function(input, output) {
                         label = paste0('Popolazione ', dts()$dn, ' ', dts()$ycx$CMNd, ': ', formatCit(round(sum(dts()$fbx$pop)))),
                         highlightOptions = hlt.options
                     ) |>
-                    addCircles(
-                        data = dts()$fbx, lng = ~x_lon, lat = ~y_lat, 
+                    addGlPoints(
+                        data = dts()$fbx, 
                         group = 'gridpop',
                         radius = input$sld_pop,
-                        stroke = FALSE, 
+                        fragmentShaderSource = 'square',
                         fillColor = ~pal(pop), fillOpacity = 1, 
-                        label = if(input$swt_lbl) { ~formatCit(pop, 2) } else { NULL }
+                        popup = ~formatCit(pop, 2)
                     )
             grps <- NULL
             for(idx in 1:nrow(tipi_centroidi)){
@@ -129,7 +135,7 @@ server <- function(input, output) {
                         )
             }
         
-            y |> 
+            y <- y |> 
                 addLegend(
                     position = 'bottomright',
                     layerId = 'legenda',
@@ -141,7 +147,7 @@ server <- function(input, output) {
                 # TITOLO? 
                 # addControl() |> 
                 addCircles( lng = mean(bbox.it[1,]), lat = mean(bbox.it[2,]), radius = 0, opacity = 0, layerId = 'spinnerMarker' )
-
+            
         }
     )
     
@@ -153,8 +159,6 @@ server <- function(input, output) {
     # AGGIORNAMENTO MAPPA STILI PUNTI/VORONOI
     observeEvent(
         {
-            input$rdo_tpe 
-            input$swt_lbl 
             input$col_pop 
             input$swt_rvc 
             input$sld_pop
@@ -165,13 +169,13 @@ server <- function(input, output) {
             y <- leafletProxy('out_map') |>
                     removeShape(layerId = 'spinnerMarker') |>
                     clearGroup('gridpop') |> removeControl('legenda') |> clearMarkers() |> 
-                    addCircles(
-                        data = dts()$fbx, lng = ~x_lon, lat = ~y_lat,
+                    addGlPoints(
+                        data = dts()$fbx, 
                         group = 'gridpop',
                         radius = input$sld_pop,
-                        stroke = FALSE,
-                        fillColor = ~pal(pop), fillOpacity = 1,
-                        label = if(input$swt_lbl) { ~formatCit(pop, 2) } else { NULL }
+                        fragmentShaderSource = 'square',
+                        fillColor = ~pal(pop), fillOpacity = 1, 
+                        popup = ~formatCit(pop, 2)
                     )
             grps <- NULL
             for(idx in 1:nrow(tipi_centroidi)){

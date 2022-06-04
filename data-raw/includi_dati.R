@@ -5,15 +5,17 @@
 masteRfun::load_pkgs(master = FALSE, 'data.table', 'leaflet')
 devtools::load_all()
 
-y <- basemap(menu = FALSE, tiles = tiles.lst[[2]], add_pb_menu = FALSE, extras = c('reset', 'full', 'scale')) |>
+y <- basemap(menu = FALSE, tiles = tiles.lst[[2]], add_pb_menu = FALSE, extras = NULL) |>
         fitBounds(bbox.it[1, 1], bbox.it[2, 1], bbox.it[1, 2], bbox.it[2, 2]) |>
         registerPlugin(masteRshiny::spinPlugin) |>
         registerPlugin(masteRshiny::leafletspinPlugin) |>
-        htmlwidgets::onRender(masteRshiny::spin_event) |>
         htmlwidgets::onRender("
-            function() {
+            function(el, x) {    
                 let h4 = document.createElement('h4');
                 $('.leaflet-control-layers-overlays').prepend('CENTROIDI', h4);
+                var mymap = this;
+                mymap.on('layerremove', function(e) {if (e.layer.options.layerId == 'spinnerMarker') {mymap.spin(true);}});
+                mymap.on('layeradd', function(e) {if (e.layer.options.layerId == 'spinnerMarker') {mymap.spin(false);}});
             }"
         ) |> 
         clearShapes() |>

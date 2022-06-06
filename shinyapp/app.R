@@ -2,12 +2,11 @@
 # Titolo Mappa?
 # Stampa Mappa. tmap? ggplot2?
 
-masteRfun::load_pkgs(master = FALSE, 'masteRgridpop', 'masteRshiny', 'data.table', 'leafgl', 'leaflet', 'sf', 'shiny', 'shinyjs', 'shinyWidgets')
+masteRfun::load_pkgs(master = FALSE, 'masteRgridpop', 'masteRshiny', 'data.table', 'leaflet', 'shiny')
 apath <- file.path(data_path, 'gridpop', 'facebook')
 
 ui <- fluidPage(
 
-    useShinyjs(),
     faPlugin,
     tags$head(
         tags$title('Popolazione a microgriglie. @2022 MaSTeR Information'),
@@ -34,6 +33,11 @@ ui <- fluidPage(
                 background: #555;
             }
             .col-sm-3 { padding-right: 0; }
+            #titolo_menu_mappa{ 
+                margin-bottom: 10px; 
+                font-weight: 700;
+                font-size: 120%;
+            }
         "))
     ),
     # includeCSS('./styles.css'),
@@ -43,46 +47,48 @@ ui <- fluidPage(
     fluidRow(
         column(3,
             wellPanel(
-                virtualSelectInput(
+                shinyWidgets::virtualSelectInput(
                     'cbo_cmn', 'COMUNE:', cmn.lst, character(0), search = TRUE, 
                     placeholder = 'Selezionare un Comune', 
                     searchPlaceholderText = 'Cerca...', 
                     noSearchResultsText = 'Nessun Comune trovato!'
                 ),
-                pickerInput('cbo_tpp', 'POPOLAZIONE:', fb_pop.lst),
+                shinyWidgets::pickerInput('cbo_tpp', 'POPOLAZIONE:', fb_pop.lst),
                 h5(id = 'txt_num', ''),
                 br(),
                 selectInput('cbo_tls', 'TESSERA MAPPA:', tiles.lst, tiles.lst[[2]]),
                 masterPalette('col_pop', 'SCHEMA COLORE:', 'Rossi'),
-                prettySwitch('swt_rvc', 'INVERTI COLORI', FALSE, 'success', fill = TRUE),
+                shinyWidgets::prettySwitch('swt_rvc', 'INVERTI COLORI', FALSE, 'success', fill = TRUE),
                 sliderInput('sld_pop', 'SPESSORE PUNTI:', 4, 20, 8, 1),
                 masterColore('col_com', 'COLORE LINEA COMUNE:', 'black'), 
                 sliderInput('sld_com', 'SPESSORE BORDO COMUNE:', 2, 20, 6, 1),
             )
         ),
-        column(9, leafglOutput('out_map', width = '100%'))
+        column(9, leafgl::leafglOutput('out_map', width = '100%'))
     )
     
 )
 
 server <- function(input, output) {
 
-    # INIZIAZIONE MAPPA
+    # INIZIALIZZAZIONE MAPPA
     output$out_map <- renderLeaflet({ mps })
 
     # DETERMINO DATASETS
     dts <- reactive({
+        
             req(input$cbo_tpp)
             req(input$cbo_cmn %in% yc$CMN)
             
             ycx <- yc[CMN == input$cbo_cmn]
-            ybx <- yb |> subset(CMN == input$cbo_cmn) |> st_cast('MULTILINESTRING') |> merge(ycx)
-            fbx <- read_fst_idx(file.path(apath, input$cbo_tpp), input$cbo_cmn) |> st_as_sf(coords = c('x_lon', 'y_lat'), crs = 4326)
+            ybx <- yb |> subset(CMN == input$cbo_cmn) |> sf::st_cast('MULTILINESTRING') |> merge(ycx)
+            fbx <- read_fst_idx(file.path(apath, input$cbo_tpp), input$cbo_cmn) |> sf::st_as_sf(coords = c('x_lon', 'y_lat'), crs = 4326)
             dn <- gsub(' .*', '', names(fb_pop.lst)[which(fb_pop.lst == input$cbo_tpp)])
-            bbx <- as.numeric(st_bbox(ybx))
+            bbx <- as.numeric(sf::st_bbox(ybx))
             
-            html('txt_num', paste('Estratte', formatCit(nrow(fbx)), 'griglie'))
+            shinyjs::html('txt_num', paste('Estratte', formatCit(nrow(fbx)), 'griglie'))
             list('ycx' = ycx, 'ybx' = ybx, 'fbx' = fbx, 'dn' = dn, 'bbx' = bbx)
+            
     })
     
     # AGGIORNAMENTO MAPPA SCELTA TIPO POPOLAZIONE o COMUNE
@@ -92,12 +98,13 @@ server <- function(input, output) {
             input$cbo_cmn
         }, 
         {
+            
             req(dts)
             pal <- colorNumeric(liste[grepl('palette', lista) & nome == input$col_pop, elemento], dts()$fbx$pop, reverse = input$swt_rvc)
             
             y <- leafletProxy('out_map') |>
                     removeShape(layerId = 'spinnerMarker') |>
-                    clearShapes() |> clearGlLayers() |> clearControls() |> clearMarkers() |> 
+                    clearShapes() |> leafgl::clearGlLayers() |> clearControls() |> clearMarkers() |> 
                     fitBounds(dts()$bbx[1], dts()$bbx[2], dts()$bbx[3], dts()$bbx[4]) |> 
                     addPolylines(
                         data = dts()$ybx,
@@ -109,7 +116,7 @@ server <- function(input, output) {
                         label = paste0('Popolazione ', dts()$dn, ' ', dts()$ycx$CMNd, ': ', formatCit(round(sum(dts()$fbx$pop)))),
                         highlightOptions = hlt.options
                     ) |>
-                    addGlPoints(
+                    leafgl::addGlPoints(
                         data = dts()$fbx, 
                         group = 'gridpop',
                         radius = input$sld_pop,
@@ -135,7 +142,7 @@ server <- function(input, output) {
                         )
             }
         
-            y <- y |> 
+            y |> 
                 addLegend(
                     position = 'bottomright',
                     layerId = 'legenda',
@@ -146,15 +153,13 @@ server <- function(input, output) {
                 addLayersControl( overlayGroups = grps, options = layersControlOptions(collapsed = FALSE) ) |>  
                 # TITOLO? 
                 # addControl() |> 
-                addCircles( lng = mean(bbox.it[1,]), lat = mean(bbox.it[2,]), radius = 0, opacity = 0, layerId = 'spinnerMarker' )
-            
+                fine_mappa_spin()
+
         }
     )
     
     # AGGIORNAMENTO TESSERE MAPPA
-    observe({
-        leafletProxy('out_map') |> clearTiles() |> aggiungi_tessera(input$cbo_tls)
-    })
+    observe({ leafletProxy('out_map') |> clearTiles() |> aggiungi_tessera(input$cbo_tls) })
     
     # AGGIORNAMENTO MAPPA STILI PUNTI/VORONOI
     observeEvent(
@@ -164,12 +169,14 @@ server <- function(input, output) {
             input$sld_pop
         },
         {
+            
             req(dts())
+            
             pal <- colorNumeric(liste[grepl('palette', lista) & nome == input$col_pop, elemento], dts()$fbx$pop, reverse = input$swt_rvc)
             y <- leafletProxy('out_map') |>
                     removeShape(layerId = 'spinnerMarker') |>
                     clearGroup('gridpop') |> removeControl('legenda') |> clearMarkers() |> 
-                    addGlPoints(
+                    leafgl::addGlPoints(
                         data = dts()$fbx, 
                         group = 'gridpop',
                         radius = input$sld_pop,
@@ -194,6 +201,7 @@ server <- function(input, output) {
                             label = tx$descrizione
                         )
             }
+            
             y |>
                 addLegend(
                     position = 'bottomright',
@@ -202,7 +210,8 @@ server <- function(input, output) {
                     opacity = 1,
                     title = dts()$dn
                 ) |> 
-                addCircles( lng = mean(bbox.it[1,]), lat = mean(bbox.it[2,]), radius = 0, opacity = 0, layerId = 'spinnerMarker' )
+                fine_mappa_spin()
+            
         }
         
     )
@@ -214,7 +223,9 @@ server <- function(input, output) {
             input$sld_com
         },
         {
+            
             req(dts())
+            
             leafletProxy('out_map') |>
                 removeShape(layerId = 'spinnerMarker') |>
                 clearGroup('comune') |> 
@@ -228,7 +239,8 @@ server <- function(input, output) {
                     label = paste0('Popolazione ', dts()$dn, ' ', dts()$ycx$CMNd, ': ', formatCit(round(sum(dts()$fbx$pop)))),
                     highlightOptions = hlt.options
                 ) |> 
-                addCircles( lng = mean(bbox.it[1,]), lat = mean(bbox.it[2,]), radius = 0, opacity = 0, layerId = 'spinnerMarker' )
+                fine_mappa_spin()
+            
         }
         
     )

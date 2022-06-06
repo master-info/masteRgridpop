@@ -7,19 +7,15 @@ devtools::load_all()
 
 y <- basemap(menu = FALSE, tiles = tiles.lst[[2]], add_pb_menu = FALSE, extras = NULL) |>
         fitBounds(bbox.it[1, 1], bbox.it[2, 1], bbox.it[1, 2], bbox.it[2, 2]) |>
-        registerPlugin(masteRshiny::spinPlugin) |>
-        registerPlugin(masteRshiny::leafletspinPlugin) |>
-        htmlwidgets::onRender("
-            function(el, x) {    
-                let h4 = document.createElement('h4');
-                $('.leaflet-control-layers-overlays').prepend('CENTROIDI', h4);
-                var mymap = this;
-                mymap.on('layerremove', function(e) {if (e.layer.options.layerId == 'spinnerMarker') {mymap.spin(true);}});
-                mymap.on('layeradd', function(e) {if (e.layer.options.layerId == 'spinnerMarker') {mymap.spin(false);}});
-            }"
-        ) |> 
+        registerPlugin(spinPlugin) |>
+        registerPlugin(leafletspinPlugin) |>
+        on_render_spin('
+            if(document.getElementById("titolo_menu_mappa") === null)
+                $(".leaflet-control-layers-overlays").prepend("<span id=titolo_menu_mappa>CENTROIDI</span>");
+        ') |>
         clearShapes() |>
-        addCircles( lng = mean(bbox.it[1,]), lat = mean(bbox.it[2,]), radius = 0, opacity = 0, layerId = 'spinnerMarker' )
+        fine_mappa_spin()
+
 fn <- 'mps'
 assign(fn, y)
 save( list = fn, file = file.path('data', paste0(fn, '.rda')), version = 3, compress = 'gzip' )

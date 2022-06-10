@@ -82,7 +82,8 @@ server <- function(input, output) {
             
             ycx <- yc[CMN == input$cbo_cmn]
             ybx <- yb |> subset(CMN == input$cbo_cmn) |> sf::st_cast('MULTILINESTRING') |> merge(ycx)
-            fbx <- read_fst_idx(file.path(apath, input$cbo_tpp), input$cbo_cmn) |> sf::st_as_sf(coords = c('x_lon', 'y_lat'), crs = 4326)
+            fbx <- read_fst_idx(file.path(apath, input$cbo_tpp), input$cbo_cmn, cols = c('x_lon', 'y_lat', 'pop')) |> 
+                        sf::st_as_sf(coords = c('x_lon', 'y_lat'), crs = 4326)
             dn <- gsub(' .*', '', names(fb_pop.lst)[which(fb_pop.lst == input$cbo_tpp)])
             bbx <- as.numeric(sf::st_bbox(ybx))
             
